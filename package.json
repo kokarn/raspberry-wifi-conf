@@ -6,7 +6,34 @@
   "scripts": {
     "test": "npm test",
     "preprovision": "sudo npm install -g bower && bower install",
-    "provision": "apt-get update -y && apt-get install isc-dhcp-server hostapd iw -y",
+    "provision": "apt-get update -y && apt-get install dnsmasq hostapd iw -y && echo '########## COPY DEFAULT CONFIG FILE ##########' && cp -f /etc/wpa_supplicant/wpa_supplicant.conf ./assets/etc/default/wpa_supplicant.conf && cp -f /etc/network/interfaces ./assets/etc/default/interfaces && cp -f /etc/dhcpcd.conf ./assets/etc/default/dhcpcd.conf && cp -f /etc/dnsmasq.conf ./assets/etc/default/dnsmasq.conf && cp -f /etc/default/hostapd ./assets/etc/default/hostapd",
+    "bootstrap": "wget http://treebeard.home.net:1234/bootstrap/pifi-conf -O bootstrap.sh && chmod u+x bootstrap.sh && ./bootstrap.sh",
+    "reset": "cp -f ./assets/etc/default/wpa_supplicant.conf /etc/wpa_supplicant/wpa_supplicant.conf && cp -f ./assets/etc/default/interfaces /etc/network/interfaces && cp -f ./assets/etc/default/dhcpcd.conf /etc/dhcpcd.conf && cp -f ./assets/etc/default/dnsmasq.conf /etc/dnsmasq.conf && cp -f ./assets/etc/default/hostapd /etc/default/hostapd && rm /etc/hostapd/hostapd.conf",
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/sabhiram/raspberry-wifi-conf.git"
+  },
+  "keywords": [
+    "RaspberryPi",
+    "Node",
+    "Wifi"
+  ],
+  "author": "Shaba Abhiram",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/sabhiram/raspberry-wifi-conf/issues"
+  },
+  "homepage": "https://github.com/sabhiram/raspberry-wifi-conf",
+  "dependencies": {
+    "body-parser": "^1.11.0",
+    "underscore": "~1.7.0",
+    "async": "~0.9.0",
+    "ejs": "~1.0.0",
+    "express": "~4.10.2"
+  }
+}
+
     "bootstrap": "wget http://treebeard.home.net:1234/bootstrap/pifi-conf -O bootstrap.sh && chmod u+x bootstrap.sh && ./bootstrap.sh"
   },
   "repository": {

@@ -12,7 +12,6 @@ _.templateSettings = {
 
 // Helper function to write a given template to a file based on a given
 // context
-
 function write_template_to_file(template_path, file_name, context, callback) {
     async.waterfall([
 
@@ -27,6 +26,16 @@ function write_template_to_file(template_path, file_name, context, callback) {
             fs.writeFile(file_name, template(context), next_step);
         }
 
+    ], callback);
+}
+
+// Del file
+function del_config_file(file_name, callback) {
+    async.waterfall([
+        function del_file(next_step) {
+            console.log("... Going to delete an existing file");
+            fs.unlink(file_name, next_step);
+        }
     ], callback);
 }
 
@@ -67,7 +76,6 @@ module.exports = function() {
 
         // Inner function which runs a given command and sets a bunch
         // of fields
-
         function run_command_and_set_fields(cmd, fields, callback) {
             exec(cmd, function(error, stdout, stderr) {
                 if (error) return callback(error);
@@ -157,7 +165,7 @@ module.exports = function() {
         },
 
         // Enables the accesspoint w/ bcast_ssid. This assumes that both
-        // isc-dhcp-server and hostapd are installed using:
+        // dnsmasq and hostapd are installed using:
         // $sudo npm run-script provision
         _enable_ap_mode = function(bcast_ssid, callback) {
             _is_ap_enabled(function(error, result_addr) {
@@ -192,20 +200,20 @@ module.exports = function() {
                     },
 
                     // Enable DHCP conf, set authoritative mode and subnet
-                    function update_dhcpd(next_step) {
+                    function update_dhcpcd(next_step) {
                         var context = config.access_point;
                         // We must enable this to turn on the access point
                         write_template_to_file(
-                            "./assets/etc/dhcp/dhcpd.conf.template",
-                            "/etc/dhcp/dhcpd.conf",
+                            "./assets/etc/dhcp/dhcpcd.conf.template",
+                            "/etc/dhcp/dhcpcd.conf",
                             context, next_step);
                     },
 
                     // Enable the interface in the dhcp server
-                    function update_dhcp_interface(next_step) {
+                    function update_dns_interface(next_step) {
                         write_template_to_file(
-                            "./assets/etc/default/isc-dhcp-server.template",
-                            "/etc/default/isc-dhcp-server",
+                            "./assets/etc/dnsmasq/dnsmasq.conf.template",
+                            "/etc/dnsmasq.conf",
                             context, next_step);
                     },
 
@@ -229,9 +237,17 @@ module.exports = function() {
                     },
 
                     function restart_dhcp_service(next_step) {
-                        exec("service isc-dhcp-server restart", function(error, stdout, stderr) {
+                        exec("service dhcpcd restart", function(error, stdout, stderr) {
                             //console.log(stdout);
-                            if (!error) console.log("... dhcp server restarted!");
+                            if (!error) console.log("... dhcpcd server restarted!");
+                            next_step();
+                        });
+                    },
+
+                    function restart_dns_service(next_step) {
+                        exec("service dnsmasq restart", function(error, stdout, stderr) {
+                            //console.log(stdout);
+                            if (!error) console.log("... dnsmasq server restarted!");
                             next_step();
                         });
                     },
@@ -263,19 +279,55 @@ module.exports = function() {
 
                 async.series([
 
+                    function del_hostapd(next_step) {
+                        del_config_file(
+                            "/etc/hostapd/hostapd.conf",
+                            next_step
+                        );
+                    },
+
+                    // Enable DHCP conf, set authoritative mode and subnet
+                    function update_dhcpcd(next_step) {
+                        write_template_to_file(
+                            "./assets/etc/default/dhcpcd.conf",
+                            "/etc/dhcpcd.conf",
+                            connection_info,
+                            next_step
+                        );
+                    },
+
                     // Update /etc/network/interface with correct info...
-                    function update_interfaces(next_step) {
+                    function update_dhcp(next_step) {
                         write_template_to_file(
                             "./assets/etc/network/interfaces.wifi.template",
                             "/etc/network/interfaces",
                             connection_info, next_step);
                     },
 
+                    // Update /etc/network/interface with correct info...
+                    function update_wpa(next_step) {
+                        write_template_to_file(
+                            "./assets/etc/wpa_supplicant/wpa_supplicant.conf.template",
+                            "/etc/wpa_supplicant/wpa_supplicant.conf",
+                            connection_info,
+                            next_step
+                        );
+                    },
+
                     // Stop the DHCP server...
                     function restart_dhcp_service(next_step) {
-                        exec("service isc-dhcp-server stop", function(error, stdout, stderr) {
+                        exec("service dnsmasq stop", function(error, stdout, stderr) {
                             //console.log(stdout);
                             if (!error) console.log("... dhcp server stopped!");
+                            next_step();
+                        });
+                    },
+
+                    // Stop the hostapd server...
+                    function restart_hostapd_service(next_step) {
+                        exec("service hostapd stop", function(error, stdout, stderr) {
+                            //console.log(stdout);
+                            if (!error) console.log("... hostapd stop!");
                             next_step();
                         });
                     },
